@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit" if battery else "Add" }} Battery — {{ brand_name }} Battery Tracker{% endblock %}
+
+{% block content %}
+
+<div class="form-card">
+    <h1>{{ "Edit Battery" if battery else "Add Battery" }}</h1>
+
+    <form method="post">
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="label">Battery Label <span class="required">*</span></label>
+                <input type="text" class="form-input" id="label" name="label"
+                       placeholder="e.g. B001, MAK-01"
+                       value="{{ battery.label if battery else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="is_oem">Type <span class="required">*</span></label>
+                <select class="form-input" id="is_oem" name="is_oem" required>
+                    <option value="1" {{ 'selected' if not battery or (battery and battery.is_oem|string == '1') else '' }}>OEM ({{ brand_name }})</option>
+                    <option value="0" {{ 'selected' if battery and battery.is_oem|string == '0' else '' }}>Aftermarket</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="voltage">Voltage <span class="required">*</span></label>
+                <select class="form-input" id="voltage" name="voltage" required>
+                    {% for v in voltages %}
+                    <option value="{{ v }}" {{ 'selected' if battery and battery.voltage|string == v|string else ('selected' if not battery and loop.first else '') }}>{{ v }}V</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="ah_rating">Capacity (Ah) <span class="required">*</span></label>
+                <select class="form-input" id="ah_rating" name="ah_rating" required>
+                    {% for ah in ah_ratings %}
+                    <option value="{{ ah }}" {{ 'selected' if battery and battery.ah_rating|string == ah|string else '' }}>{{ ah }} Ah</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="status">Status <span class="required">*</span></label>
+                <select class="form-input" id="status" name="status" required>
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {{ 'selected' if battery and battery.status == s else ('selected' if not battery and s == 'New' else '') }}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="status_changed">Status Changed</label>
+                <input type="date" class="form-input" id="status_changed" name="status_changed"
+                       value="{{ battery.status_changed if battery and battery.status_changed else '' }}">
+                <div class="form-hint">Leave blank to use today's date. Updated automatically on status change.</div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="purchase_date">Purchase Date</label>
+                <input type="date" class="form-input" id="purchase_date" name="purchase_date"
+                       value="{{ battery.purchase_date if battery and battery.purchase_date else '' }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="price">Price ($)</label>
+                <input type="number" class="form-input" id="price" name="price"
+                       step="0.01" min="0" placeholder="79.99"
+                       value="{{ battery.price if battery and battery.price else '' }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="notes">History &amp; Notes</label>
+            <textarea class="form-input" id="notes" name="notes" rows="{{ 6 if battery and battery.notes else 3 }}"
+                      placeholder="Add notes here...">{{ battery.notes if battery and battery.notes else '' }}</textarea>
+            <div class="form-hint">Status changes are logged here automatically. You can also add your own notes.</div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                {{ "Update Battery" if battery else "Add Battery" }}
+            </button>
+            <a href="{{ url_for('index') }}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

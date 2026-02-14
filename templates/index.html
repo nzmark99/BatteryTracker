@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if stats.count > 0 %}
+
+<!-- Stats row -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-label">{% if status_filter %}{{ status_filter }} Batteries{% else %}Total Batteries{% endif %}</div>
+        <div class="stat-value">{% if status_filter %}{{ filtered_count }}{% else %}{{ stats.count }}{% endif %}</div>
+        <div class="stat-sub">
+            {% if status_filter %}
+                of {{ stats.count }} total
+            {% else %}
+                {% for v, c in stats.voltages.items() %}
+                    {{ c }}&times;{{ v }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">{% if status_filter %}{{ status_filter }} Investment{% else %}Total Invested{% endif %}</div>
+        <div class="stat-value">${{ "%.2f"|format(filtered_investment) }}</div>
+        <div class="stat-sub">
+            {% if filtered_count > 0 and filtered_investment > 0 %}
+                ${{ "%.2f"|format(filtered_investment / filtered_count) }} avg per battery
+            {% else %}
+                &mdash;
+            {% endif %}
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Status Overview</div>
+        <div class="stat-sub" style="margin-top: 0;">{{ stats.statuses.get('In Use', 0) }} active of {{ stats.count }}</div>
+        <div class="status-bar" role="img" aria-label="Status distribution bar chart">
+            {% for s in all_statuses %}
+                {% set count = stats.statuses.get(s, 0) %}
+                {% if count > 0 %}
+                <div class="status-bar-seg seg-{{ s|lower|replace(' ', '-') }}" style="flex: {{ count }};"></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="status-legend">
+            {% for s in all_statuses %}
+                {% set count = stats.statuses.get(s, 0) %}
+                {% if count > 0 %}
+                <span class="status-legend-item">
+                    <span class="status-legend-dot" style="background: var(--accent-{{ 'purple' if s == 'New' else 'green' if s == 'In Use' else 'amber' if s == 'For Repair' else 'blue' if s == 'Repaired' else 'red' }});"></span>
+                    {{ count }} {{ s }}
+                </span>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="section-header">
+    <h1>Inventory</h1>
+    <span class="badge">
+        {% if status_filter %}
+            {{ filtered_count }} of {{ stats.count }} unit{{ 's' if stats.count != 1 else '' }}
+        {% else %}
+            {{ stats.count }} unit{{ 's' if stats.count != 1 else '' }}
+        {% endif %}
+    </span>
+</div>
+
+<div class="filter-bar">
+    <a href="{{ url_for('index') }}" class="filter-pill {{ 'active' if not status_filter else '' }}">
+        All <span class="count">{{ stats.count }}</span>
+    </a>
+    {% for s in all_statuses %}
+        {% set count = stats.statuses.get(s, 0) %}
+        {% if count > 0 %}
+        <a href="{{ url_for('index', status=s) }}" class="filter-pill {{ 'active' if status_filter == s else '' }}">
+            {{ s }} <span class="count">{{ count }}</span>
+        </a>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Inventory table -->
+<div class="table-wrap">
+    <table aria-label="Battery inventory">
+        <caption class="sr-only">Battery inventory listing all tracked batteries with their details</caption>
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>Voltage</th>
+                <th>Capacity</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Status Changed</th>
+                <th>Purchased</th>
+                <th>Age</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in batteries %}
+            <tr>
+                <td data-label="Label" class="cell-model">{{ b.label }}</td>
+                <td data-label="Voltage">
+                    <span class="voltage-badge">{{ b.voltage }}V</span>
+                </td>
+                <td data-label="Capacity" class="cell-mono">{{ b.ah_rating }} Ah</td>
+                <td data-label="Type">
+                    <span class="type-badge {{ 'type-oem' if b.is_oem else 'type-aftermarket' }}">
+                        {{ "OEM (" + brand_name + ")" if b.is_oem else "Aftermarket" }}
+                    </span>
+                </td>
+                <td data-label="Status">
+                    <span class="status-badge status-{{ b.status|lower|replace(' ', '-') }}">{{ b.status }}</span>
+                </td>
+                <td data-label="Status Changed" class="cell-dim">{{ b.status_changed|audate or "&mdash;"|safe }}</td>
+                <td data-label="Purchased" class="cell-dim">{{ b.purchase_date|audate or "&mdash;"|safe }}</td>
+                <td data-label="Age" class="cell-mono">{{ b.purchase_date|age or "&mdash;"|safe }}</td>
+                <td data-label="Price" class="cell-mono">{{ "$%.2f"|format(b.price) if b.price else "&mdash;"|safe }}</td>
+                <td class="cell-actions">
+                    <a href="{{ url_for('edit', id=b.id) }}" class="btn-sm btn-edit">Edit</a>
+                    <button type="button" class="btn-sm btn-delete"
+                            onclick="confirmDelete('{{ url_for('delete', id=b.id) }}', '{{ b.label }}')">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if filtered_investment > 0 %}
+    <div class="table-footer">
+        <span>{{ filtered_count }} batter{{ 'ies' if filtered_count != 1 else 'y' }}{% if status_filter %} ({{ status_filter }}){% endif %}</span>
+        <span>Total: <strong>${{ "%.2f"|format(filtered_investment) }}</strong></span>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+
+<!-- Empty state -->
+<div class="empty-state">
+    <svg width="80" height="80" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="4" y="10" width="30" height="26" rx="4" fill="var(--brand-primary)" opacity="0.18"/>
+        <rect x="4" y="10" width="30" height="26" rx="4" stroke="var(--brand-primary)" stroke-width="1.5" opacity="0.4"/>
+        <rect x="11" y="3" width="16" height="9" rx="2.5" fill="var(--border-default)"/>
+        <path d="M21.5 17 L17 24.5 L20 24.5 L16.5 32 L23 23.5 L20 23.5 Z" fill="var(--brand-primary)" opacity="0.4"/>
+    </svg>
+    <h2>No batteries tracked yet</h2>
+    <p>Start building your {{ brand_name }} battery inventory.</p>
+    <a href="{{ url_for('add') }}" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Add First Battery
+    </a>
+</div>
+
+{% endif %}
+
+{% endblock %}
