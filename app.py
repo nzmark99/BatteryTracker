@@ -129,6 +129,15 @@ def init_db():
         )
         """
     )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
     db.commit()
 
 
@@ -384,6 +393,21 @@ def settings():
 
     current_brand = get_setting("brand", "Makita")
     return render_template("settings.html", brands=BRANDS, current_brand=current_brand)
+
+
+@app.route("/feedback", methods=["GET", "POST"])
+def feedback():
+    if request.method == "POST":
+        message = request.form.get("message", "").strip()
+        if not message:
+            flash("Feedback message cannot be blank.", "error")
+            return render_template("feedback.html")
+        db = get_db()
+        db.execute("INSERT INTO feedback (message) VALUES (?)", (message,))
+        db.commit()
+        flash("Thanks for your feedback!", "success")
+        return redirect(url_for("index"))
+    return render_template("feedback.html")
 
 
 if __name__ == "__main__":
